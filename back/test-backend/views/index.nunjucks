@@ -1,0 +1,288 @@
+{% extends 'views/layout.nunjucks' %}
+
+{% block content %}
+    <div id="mask" class="mask"></div>
+	<div class="container" id="page">
+		<div class="form-group" style="text-align: center" >
+			<h2>登录页面</h2>
+		</div>
+
+		<div class="form-group" >
+			<div class="row" style="text-align: center">
+				<div class="col-md-3"></div>
+				<div class="col-md-6">
+					<div class="panel panel-default">
+					    <div class="panel-heading">
+					        <h3 class="panel-title">
+					            登录
+					        </h3>
+					    </div>
+					    <div class="panel-body">
+					    	<div class="row" style="text-align: center">
+					    		
+						        <div class="col-md-12">
+									<label class="col-md-2 control-label" for="userName">用户名</label>
+									<div class="col-md-10">
+										<input type="text" v-model="userName" class="form-control" id="userName" placeholder="请输入用户名">
+									</div>
+								</div>
+								
+							</div>
+							<div class="row" style="text-align: center; padding-top: 15px;">
+						        <div class="col-md-12">
+									<label class="col-md-2 control-label" for="password">密码</label>
+									<div class="col-md-10">
+										<input type="password" v-model="password" @keyup.key.enter="login" class="form-control" id="password" placeholder="请输入密码">
+								</div>
+							</div>
+							<div class="row" style="text-align: center;">
+						        <div class="col-md-12" style="margin-top: 15px;">
+									<button class="btn btn-primary" @click="login">登录</button>
+								</div>
+							</div>
+
+							
+					    </div>
+
+					</div>
+				</div>
+				<div class="row" style="text-align: center;">
+						        <div class="col-md-12" style="margin-top: 15px;">
+									<button class="btn btn-primary" @click="anki">Anki</button>
+								</div>
+							</div>
+				<div class="col-md-3"></div>
+			</div>	
+			</div>
+			<wendy :buttons="btnList"></wendy>
+
+			<div>
+				<h2>Voice Recognition Test</h2>
+				<button class="btn btn-primary" @click="RecordStart">start</button>
+			</div>
+		</div>
+	</div>
+
+
+	{{ username }}
+{% endblock %}
+
+{% block footer %}
+<script src="../js/bootstrap.min.js"></script>
+<script src="../js/bootstrap-table.min.js"></script>
+		<script src="../js/bootstrap-table-zh-CN.min.js"></script>
+	<script src="../js/tableExport.min.js"></script>
+	<script src="../js/xlsx.core.min.js"></script>
+	<script type="text/javascript">
+		
+
+		function showMask(){     
+			console.log($(document).height()+ " " + $(document).width());
+		    $("#mask").css("height",$(document).height());     
+		    $("#mask").css("width",$(document).width()); 
+		    $("#mask").css("text-align","center");
+		    $("#mask").html('<span style="display: inline-block;vertical-align:  middle;height: 100%;"></span>' + "<i class='icon-spinner icon-spin' style='font-size: 50px; color: #fff'></i>");
+		    $("#mask").show();
+		}
+
+		function hideMask(){
+		    $("#mask").hide();     
+		}
+
+		// 调用anki客户端的service 以下是原生javascript调用ajax的实现方式
+		/**
+		  action为操作名称
+		  params是传的参数 具体信息可以查看 https://github.com/FooSoft/anki-connect
+		**/
+		const ankiInvoke = (action, version, params={}) => {
+		 	return new Promise((resolve, reject) => {
+		        const xhr = new XMLHttpRequest();
+		        xhr.addEventListener('error', () => reject('failed to connect to AnkiConnect'));
+		        xhr.addEventListener('load', () => {
+		            try {
+		                const response = JSON.parse(xhr.responseText);
+		                if (response.error) {
+		                    throw response.error;
+		                } else {
+		                    if (response.hasOwnProperty('result')) {
+		                        resolve(response.result);
+		                    } else {
+		                        reject('failed to get results from AnkiConnect');
+		                    }
+		                }
+		            } catch (e) {
+		                reject(e);
+		            }
+		        });
+
+		        xhr.open('POST', 'http://127.0.0.1:8765');
+		        xhr.send(JSON.stringify({action, version, params}));
+		    });
+
+		}
+
+		const getDecknames = () => {
+			return ankiInvoke("deckNames", 5);
+		}
+
+		const getModelNames = () => {
+			return ankiInvoke("modelNames", 5);
+		}
+
+		const getModelFieldNames = modelName => {
+			var params = {
+			    "modelName": modelName
+			};
+			return ankiInvoke("modelFieldNames", 5, params);
+		}
+
+		Vue.component("wendy", {
+			render: function(createElement) {
+				console.log(this.buttons.length)
+				let content = []
+
+				for(let i = 0; i < this.buttons.length; i++) {
+					content.push(createElement("button", 
+						{
+							'class': {
+									'btn': true, 
+									'btn-primary':true
+							}, 
+							style: {
+									marginRight: '15px'
+							},
+							on: function(e){
+								console.log("clicked")
+							}
+
+						}, 
+						this.buttons[i]));
+				}
+
+				return createElement("div", content);
+
+				// return createElement("div",
+				// 	[
+				// 		createElement("button", {'class': {'btn': true, 'btn-primary':true}, style: {marginRight: '15px'}}, "aa"),
+				// 		createElement("button", {'class': {'btn': true, 'btn-primary':true}},"bb")
+				// 	]);
+			},
+			props: {
+				buttons: {
+					type: Array,
+					required: true
+				}
+			}
+		})
+
+		var param = {
+			el: "#page",
+			data: {
+				userName: "bernard",
+				password: "bernard946",
+				serverPrefix: "http://localhost:3000",
+				btnList: [
+						"button1", "button2", "button3"
+					],
+				isDisabled: ""
+			},
+			created: function() {
+				Cookies.remove('username', { path: '' });
+			},
+			methods: {
+				login: function(e) {
+					// get username and password
+					console.log("login")
+					let serverPrefix = param.data.serverPrefix
+					let username = param.data.userName
+					let password = param.data.password
+					// showMask()
+					if($.trim(username) != "" && $.trim(password) != ""){
+						let requestConfig = {
+				            method: "POST",
+				            headers: {
+				                'Content-Type': 'application/json; charset=utf8'
+				            }
+				        }
+						Object.defineProperty(requestConfig, 'body', {
+			                value: JSON.stringify({username: username, password: password})
+			            })
+						fetch(`${serverPrefix}/doLogin`, requestConfig)
+							.then(function(response){
+								return response.json()
+							}).then(function(res){
+								console.log(res)
+								if(res.username != ""){
+									// 登录成功
+									console.log(res.username)
+									Cookies.set('username', res.username, { path: '' });
+									console.log(Cookies.get("username"))
+
+
+									window.location.href = `${serverPrefix}/loginSuccess`;
+								}else{
+									// 登录失败
+									hideMask()
+									alert("用户名或密码错误")
+								}
+						})
+
+					}else{
+						alert("用户名或密码不能为空")
+					}
+				},
+				anki: async function(e) {
+					console.log("anki");
+					// getDecknames().then(data => {
+					// 	console.log(data)
+					// 	return getModelNames();
+					// }).catch(err => {
+					// 	console.log(err)
+					// }).then(data => {
+					// 	console.log(data);
+					// 	return getModelFieldNames(data[2]);
+					// }).catch(err => {
+					// 	console.log(err)
+					// })
+					try{
+						let res = await getDecknames();
+						console.log(res)
+						res = await getModelNames();
+						console.log(res)
+						res = await getModelFieldNames(res[2]);
+						console.log(res)
+					}catch(err){
+						console.log(err)
+					}
+					
+				},
+				RecordStart: function(e){
+					var grammar = '#JSGF V1.0; grammar colors; public <color> = white | yellow ;'
+					var recognition = new (webkitSpeechRecognition || mozSpeechRecognition || msSpeechRecognition)();
+					var speechRecognitionList = new webkitSpeechGrammarList();
+					speechRecognitionList.addFromString(grammar, 1);
+					recognition.grammars = speechRecognitionList;
+					recognition.lang = 'es-ES';
+					recognition.interimResults = false;
+					recognition.maxAlternatives = 5;
+					recognition.start();
+
+					recognition.onresult = function(event) {
+					    console.log('You said: ', event.results[0][0].transcript);
+					};
+
+					recognition.onerror = function(event) {
+						console.log(event)
+					}
+
+					recognition.onspeechend = function(event) {
+						recognition.stop();
+					}
+				}
+			}
+		}
+
+		new Vue(param)
+	</script>
+
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'views/layout.nunjucks' %}
+
+{% block content %}
+    Hello, {{ username }}, I guess you are a good teacher.
+{% endblock %}
+
+{% block footer %}
+<script src="../js/bootstrap.min.js"></script>
+<script src="../js/bootstrap-table.min.js"></script>
+		<script src="../js/bootstrap-table-zh-CN.min.js"></script>
+	<script src="../js/tableExport.min.js"></script>
+	<script src="../js/xlsx.core.min.js"></script>
+	<script type="text/javascript">
+		
+	</script>
+
+{% endblock %}
